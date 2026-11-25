@@ -2,10 +2,17 @@
 pipeline {
     agent any
 
+    options {
+        skipDefaultCheckout(true)
+    }
+
     environment {
         REGISTRY = 'localhost:5000'
         IMAGE_NAME = 'student-demo-app'
+
         PYTHON = 'C:\\Users\\STUDENT\\AppData\\Local\\Programs\\Python\\Python313\\python.exe'
+
+        DOCKER = 'C:\\Users\\STUDENT\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe'
     }
 
     stages {
@@ -19,47 +26,54 @@ pipeline {
 
         stage('2. Application Build & Test') {
             steps {
-                echo 'Verifying Python installation...'
-
+                echo 'Checking Python installation...'
                 bat '"%PYTHON%" --version'
 
                 echo 'Verifying Python syntax...'
-
                 bat '"%PYTHON%" -m py_compile app.py'
 
                 echo 'Python syntax verification successful!'
             }
         }
 
-        stage('3. Build & Tag Docker Image') {
+        stage('3. Check Docker Installation') {
+            steps {
+                echo 'Checking Docker version...'
+                bat '"%DOCKER%" --version'
+
+                echo 'Checking Docker engine...'
+                bat '"%DOCKER%" info'
+            }
+        }
+
+        stage('4. Build & Tag Docker Image') {
             steps {
                 echo 'Building Docker image...'
 
                 bat '''
-                    docker build -t %REGISTRY%/%IMAGE_NAME%:%BUILD_NUMBER% -t %REGISTRY%/%IMAGE_NAME%:latest .
+                    "%DOCKER%" build -t %REGISTRY%/%IMAGE_NAME%:%BUILD_NUMBER% -t %REGISTRY%/%IMAGE_NAME%:latest .
                 '''
 
                 echo 'Docker image built successfully!'
             }
         }
 
-        stage('4. Push Image to Registry') {
+        stage('5. Push Image to Registry') {
             steps {
-                echo 'Pushing versioned Docker image...'
+                echo 'Pushing versioned image...'
 
-                bat 'docker push %REGISTRY%/%IMAGE_NAME%:%BUILD_NUMBER%'
+                bat '"%DOCKER%" push %REGISTRY%/%IMAGE_NAME%:%BUILD_NUMBER%'
 
-                echo 'Pushing latest Docker image...'
+                echo 'Pushing latest image...'
 
-                bat 'docker push %REGISTRY%/%IMAGE_NAME%:latest'
+                bat '"%DOCKER%" push %REGISTRY%/%IMAGE_NAME%:latest'
 
-                echo 'Docker images pushed successfully!'
+                echo 'Images pushed successfully!'
             }
         }
     }
 
     post {
-
         success {
             echo '===================================='
             echo 'PIPELINE EXECUTED SUCCESSFULLY!'
@@ -68,10 +82,8 @@ pipeline {
         }
 
         failure {
-            echo '===================================='
             echo 'PIPELINE FAILED!'
             echo 'Check Jenkins Console Output.'
-            echo '===================================='
         }
 
         always {
